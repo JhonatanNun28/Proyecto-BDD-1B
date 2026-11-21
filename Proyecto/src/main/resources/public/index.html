@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Supermercado Distribuido - Citus EPN</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 950px; margin: 25px auto; background: #f4f6f9; color: #222; }
+        h1 { color: #0b3d91; }
+        .card { background: white; padding: 18px; border-radius: 8px; margin-bottom: 18px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); }
+        button { background: #0b3d91; color: white; border: none; padding: 9px 14px; border-radius: 5px; cursor: pointer; margin: 4px 4px 4px 0; font-weight: 600; }
+        button:hover { background: #082b66; }
+        button.warn { background: #b45309; }
+        input { padding: 7px; border: 1px solid #ccc; border-radius: 4px; width: 110px; margin-right: 6px; }
+        .badge { display: inline-block; background: #16a34a; color: white; padding: 6px 12px; border-radius: 20px; font-size: 1.1em; font-weight: bold; }
+        pre { background: #1e293b; color: #e2e8f0; padding: 14px; border-radius: 6px; overflow-x: auto; max-height: 350px; }
+    </style>
+</head>
+<body>
+<h1>Panel de Pruebas - Base de Datos Distribuida (Citus)</h1>
+
+<div class="card">
+    <h3>1. Insertar Nueva Venta (Escritura Distribuida)</h3>
+    <input type="number" id="ventaId" placeholder="Venta ID" value="900001">
+    <input type="number" id="tiendaId" placeholder="Tienda (1-20)" value="5">
+    <input type="number" id="clienteId" placeholder="Cliente ID" value="120">
+    <input type="number" id="productoId" placeholder="Prod ID" value="10">
+    <input type="number" id="cantidad" placeholder="Cant." value="3">
+    <button onclick="insertarVenta()">Insertar Venta</button>
+</div>
+
+<div class="card">
+    <h3>2. Consultas y Pruebas de Rendimiento Distribuido</h3>
+    <button onclick="consultar('/api/ventas/agregado')">Consulta Agregada (Por Tienda)</button>
+    <button onclick="consultar('/api/ventas/rango?inicio=2026-01-01&fin=2026-04-30')">Consulta por Rango (Ene-Abr 2026)</button>
+    <br>
+    <button onclick="consultar('/api/pruebas/local-vs-distribuida?tipo=local')">Prueba: Consulta Local (1 Shard)</button>
+    <button onclick="consultar('/api/pruebas/local-vs-distribuida?tipo=distribuida')">Prueba: Consulta Distribuida (Todos los Shards)</button>
+    <br>
+    <button onclick="consultar('/api/pruebas/join-colocado')">Prueba: JOIN Colocado (Ventas + Detalle)</button>
+    <button class="warn" onclick="consultar('/api/pruebas/join-no-colocado')">Prueba: JOIN NO Colocado (Ventas + Clientes)</button>
+</div>
+
+<div class="card">
+    <h3>Resultado y Tiempo de Ejecución: <span id="tiempo" class="badge">-- ms</span></h3>
+    <pre id="salida">Haz clic en cualquier botón para ejecutar la consulta contra el clúster Citus...</pre>
+</div>
+
+<script>
+    async function consultar(url) {
+        document.getElementById('salida').textContent = 'Ejecutando consulta en Citus...';
+        const res = await fetch(url);
+        const data = await res.json();
+        document.getElementById('tiempo').textContent = data.tiempo_ms + ' ms';
+        document.getElementById('salida').textContent = JSON.stringify(data, null, 2);
+    }
+
+    async function insertarVenta() {
+        const payload = {
+            venta_id: Number(document.getElementById('ventaId').value),
+            tienda_id: Number(document.getElementById('tiendaId').value),
+            cliente_id: Number(document.getElementById('clienteId').value),
+            producto_id: Number(document.getElementById('productoId').value),
+            cantidad: Number(document.getElementById('cantidad').value),
+            precio_unitario: 15.50
+        };
+        const res = await fetch('/api/ventas', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        document.getElementById('tiempo').textContent = data.tiempo_ms + ' ms';
+        document.getElementById('salida').textContent = JSON.stringify(data, null, 2);
+        document.getElementById('ventaId').value = payload.venta_id + 1;
+    }
+</script>
+</body>
+</html>
